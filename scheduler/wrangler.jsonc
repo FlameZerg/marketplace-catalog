@@ -1,0 +1,17 @@
+{
+  "name": "marketplace-catalog-scheduler",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-10-21",
+  "send_metrics": false,
+  // 仅接受定时事件，不提供公开 URL 或主站路由。
+  // Scheduled events only: no public URLs or main-site routes.
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [],
+  "observability": { "enabled": true },
+  "triggers": {
+    // 初始禁用；独立 Pages 验收后由用户改为 ["0 16 * * *"]，即北京时间每日 00:00。
+    // Disabled initially; after acceptance, use ["0 16 * * *"] for daily 00:00 UTC+8.
+    "crons": []
+  }
+}

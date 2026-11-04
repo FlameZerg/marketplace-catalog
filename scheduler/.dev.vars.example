@@ -1,0 +1,18 @@
+# 仅调度器本地配置示例；真实文件 .dev.vars 已忽略，禁止提交或复制进 VITE_*。
+# Local scheduler example only. Never commit .dev.vars or copy the secret into VITE_*.
+CATALOG_DEPLOY_HOOK_URL=
+
+# Secret 必须是独立市场 Pages 正式分支的 Deploy Hook，不能使用主站项目的 Hook。
+# Use the dedicated catalog Pages production-branch hook, never the main site's hook.
+# URL 即凭据，不需要额外 Cloudflare API Token；本地触发同样会创建真实构建。
+# The URL is the credential; no extra API token is needed. Local invocation also triggers a real build.
+#
+# 用户验收后自行从仓库根目录执行，复用已有 Wrangler，不自动安装或升级：
+# After acceptance, run from the repository root using the existing Wrangler:
+# pnpm exec wrangler deploy --config marketplace-catalog/scheduler/wrangler.jsonc
+# pnpm exec wrangler secret put CATALOG_DEPLOY_HOOK_URL --config marketplace-catalog/scheduler/wrangler.jsonc
+#
+# 初次部署保持 crons=[]；确认 Hook、构建、部署各阶段后再启用 Cron 并重新部署。
+# Keep crons=[] initially; enable Cron and redeploy only after validating all three stages.
+# 不要同时保留两个有效的每日发布调度；旧 Actions 在新链路验收后才退役。
+# Do not leave two daily publishing schedules active; retire Actions only after acceptance.

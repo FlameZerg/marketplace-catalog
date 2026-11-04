@@ -1,0 +1,8 @@
+{
+  // 仅用于独立市场 Pages；名称须与控制台项目一致，禁止使用主站项目名。
+  // Dedicated catalog Pages project only; match its dashboard name, never the main site.
+  "name": "marketplace-catalog",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-10-21",
+  "send_metrics": false
+}

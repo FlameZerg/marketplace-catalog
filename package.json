@@ -1,0 +1,12 @@
+{
+  "name": "marketplace-catalog",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18.0" },
+  "scripts": {
+    "build": "node --import ./bootstrap.mjs --experimental-transform-types build.ts",
+    "collect": "node --import ./bootstrap.mjs --experimental-transform-types collect.ts",
+    "publish": "node --import ./bootstrap.mjs --experimental-transform-types publish.ts"
+  },
+  "dependencies": { "yaml": "2.8.2", "zod": "3.25.76" }
+}
