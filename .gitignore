@@ -1,5 +1,3 @@
-# 公共产物仅由市场 Pages 构建生成，不提交 Git 或触发主站构建。
-# Generated catalog data is never committed or used to rebuild the main site.
 output/
 dist/
 node_modules/

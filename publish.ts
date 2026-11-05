@@ -3,8 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
-import { publicCatalogIndexSchema } from '../app/lib/marketplace/public-catalog-contract';
-import { inspectStatic, readOptionalJson, verifyIndexFiles } from './artifacts';
+// 离线入口只引用仓库内核心，独立 Pages 构建不依赖主站目录。
+import { publicCatalogIndexSchema } from './core/marketplace/public-catalog-contract.ts';
+import { inspectStatic, readOptionalJson, verifyIndexFiles } from './artifacts.ts';
 
 const project = process.env.CATALOG_PAGES_PROJECT;
 const account = process.env.CLOUDFLARE_ACCOUNT_ID;

@@ -4,5 +4,14 @@
   "name": "marketplace-catalog",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-10-21",
-  "send_metrics": false
+  "send_metrics": false,
+  // 普通构建变量统一由此文件管理；GITHUB_TOKEN 仅在 Pages 控制台保存为机密。
+  // Keep non-secret build variables here; store GITHUB_TOKEN only as a secret in the Pages dashboard.
+  // 构建环境只提取字符串变量，不能将 false 或 1 写成布尔值或数字。
+  // The build environment only extracts string variables, not boolean false or numeric 1.
+  "vars": {
+    "CATALOG_PUBLIC_URL": "https://marketplace-catalog.pages.dev",
+    "CATALOG_FORCE": "false",
+    "SKIP_DEPENDENCY_INSTALL": "1"
+  }
 }

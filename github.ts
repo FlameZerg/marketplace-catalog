@@ -1,12 +1,13 @@
-import { parseSkillMarkdown } from '../app/lib/skills/parser.client';
-import { discoverSkillFiles } from '../app/lib/marketplace/skill-discovery.client';
-import { assertSkillPackagePaths, SKILL_PACKAGE_MAX_BYTES } from '../app/lib/skills/package-policy';
-import { SKILL_MARKETPLACE_SCHEMA_VERSION } from '../app/lib/marketplace/types';
-import type { MarketplaceSource, MarketplaceSourceSnapshot, SkillMarketplaceEntry } from '../app/lib/marketplace/types';
-import { publicSkillManifestSchema, type PublicSkillManifest } from '../app/lib/marketplace/public-catalog-contract';
-import { mapWithConcurrency } from '../app/lib/marketplace/concurrency';
-import { fetchBytes, fetchJson, sha256 } from './network';
-import { CATALOG_RUN_LIMITS, createCatalogRunContext, type CatalogRunContext } from './run-context';
+// 离线入口只引用仓库内核心，独立 Pages 构建不依赖主站目录。
+import { parseSkillMarkdown } from './core/skills/parser.client.ts';
+import { discoverSkillFiles } from './core/marketplace/skill-discovery.client.ts';
+import { assertSkillPackagePaths, SKILL_PACKAGE_MAX_BYTES } from './core/skills/package-policy.ts';
+import { SKILL_MARKETPLACE_SCHEMA_VERSION } from './core/marketplace/types.ts';
+import type { MarketplaceSource, MarketplaceSourceSnapshot, SkillMarketplaceEntry } from './core/marketplace/types.ts';
+import { publicSkillManifestSchema, type PublicSkillManifest } from './core/marketplace/public-catalog-contract.ts';
+import { mapWithConcurrency } from './core/marketplace/concurrency.ts';
+import { fetchBytes, fetchJson, sha256 } from './network.ts';
+import { CATALOG_RUN_LIMITS, createCatalogRunContext, type CatalogRunContext } from './run-context.ts';
 import { z } from 'zod';
 
 const treeSchema = z.object({ truncated: z.boolean(), tree: z.array(z.object({

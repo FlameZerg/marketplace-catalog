@@ -1,8 +1,12 @@
 /*
   Access-Control-Allow-Origin: *
+  Access-Control-Expose-Headers: Content-Range
   Cross-Origin-Resource-Policy: cross-origin
   X-Content-Type-Options: nosniff
 /catalog-index.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+/catalog-browse.json
   Content-Type: application/json; charset=utf-8
   Cache-Control: public, max-age=300
 /releases/*
