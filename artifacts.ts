@@ -1,13 +1,15 @@
 import { mkdir, mkdtemp, readFile, writeFile, cp, readdir, stat, lstat } from 'node:fs/promises';
 import path from 'node:path';
+// 离线入口只引用仓库内核心，独立 Pages 构建不依赖主站目录。
 import {
   PUBLIC_CATALOG_LIMITS, publicCatalogIndexSchema,
   assertPublicCatalogEntries, publicSkillManifestSchema,
   retainCompatiblePublicCatalogSources,
   type PublicCatalogIndex, type PublicCatalogFile,
-} from '../app/lib/marketplace/public-catalog-contract';
-import { sha256 } from './network';
-import { createCatalogRunContext, type CatalogRunContext } from './run-context';
+} from './core/marketplace/public-catalog-contract.ts';
+import { sha256 } from './network.ts';
+import { createCatalogRunContext, type CatalogRunContext } from './run-context.ts';
+import { buildBrowseCatalog } from './browse.ts';
 
 // 所有指针留在私有工作目录；线上索引只由一次完整静态部署切换。
 export async function readOptionalJson(file: string): Promise<unknown | undefined> {
@@ -114,6 +116,28 @@ export async function assembleDeployment(
     bytes += file.bytes;
     count += 1;
   }
+  // 轻量浏览索引独立于恢复索引；详情仍引用已有历史分片，不新增每条一个文件。
+  const browseReferences = new Map<string, PublicCatalogFile>();
+  const browse = await buildBrowseCatalog(output, index, context, async (data, bucket) => {
+    const file = await storeContent(output, data, bucket, context);
+    browseReferences.set(file.path, file);
+    return file;
+  });
+  for (const file of browseReferences.values()) {
+    if (references.has(file.path)) continue;
+    context.check();
+    const target = path.join(staging, file.path);
+    await mkdir(path.dirname(target), { recursive: true });
+    await cp(path.join(output, file.path), target);
+    bytes += file.bytes; count += 1;
+    if (count > PUBLIC_CATALOG_LIMITS.deploymentFiles || bytes > PUBLIC_CATALOG_LIMITS.deploymentBytes) {
+      throw new Error('marketCollectorDeploymentLimit');
+    }
+  }
+  const browseText = JSON.stringify(browse);
+  if (Buffer.byteLength(browseText) > PUBLIC_CATALOG_LIMITS.indexBytes) throw new Error('marketCollectorDeploymentLimit');
+  await writeFile(path.join(staging, 'catalog-browse.json'), browseText);
+  bytes += Buffer.byteLength(browseText); count += 1;
   for (const release of indexes) {
     context.check();
     const text = JSON.stringify(release);
@@ -134,7 +158,7 @@ export async function assembleDeployment(
   return staging;
 }
 
-const STATIC_ROOT_FILES = new Set(['catalog-index.json', '_headers', '_routes.json', '404.html']);
+const STATIC_ROOT_FILES = new Set(['catalog-index.json', 'catalog-browse.json', '_headers', '_routes.json', '404.html']);
 const CONTENT_FILE = /^content\/[a-z\d-]+\/(?:skill|mcp)\/[a-f\d]{64}\.json$/;
 const RELEASE_FILE = /^releases\/[\w.-]{1,100}\.json$/;
 const STATIC_DIRECTORY = /^(?:releases|content(?:\/[a-z\d-]+(?:\/(?:skill|mcp))?)?)$/;

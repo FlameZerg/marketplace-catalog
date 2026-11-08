@@ -2,9 +2,10 @@ import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, realpath, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { collectCatalog } from './collect';
-import { inspectStatic, verifyIndexFiles } from './artifacts';
-import { createCatalogRunContext, type CatalogRunContext } from './run-context';
+// 本地模块显式携带扩展名，原生 Node 构建不再需要自定义解析器。
+import { collectCatalog } from './collect.ts';
+import { inspectStatic, verifyIndexFiles } from './artifacts.ts';
+import { createCatalogRunContext, type CatalogRunContext } from './run-context.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const privateRoot = path.join(root, 'output');

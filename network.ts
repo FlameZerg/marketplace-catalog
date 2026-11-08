@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import type { CatalogRunContext } from './run-context';
+// 类型引用同样显式携带扩展名，保持离线模块链完整且可直接解析。
+import type { CatalogRunContext } from './run-context.ts';
 
 // 网络读取只依赖计量与取消接口，可选统计可在同一链路增加非致命的独立预算。
 export type CatalogNetworkContext = Pick<

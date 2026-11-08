@@ -1,21 +1,23 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BUILTIN_MARKETPLACE_SOURCES } from '../app/lib/marketplace/builtin-sources';
+// 离线入口只引用仓库内核心，独立 Pages 构建不依赖主站目录。
+import { BUILTIN_MARKETPLACE_SOURCES } from './core/marketplace/builtin-sources.ts';
 import {
   MCP_MARKETPLACE_SCHEMA_VERSION, SKILL_MARKETPLACE_SCHEMA_VERSION, type MarketplaceSource,
-} from '../app/lib/marketplace/types';
+} from './core/marketplace/types.ts';
 import {
   PUBLIC_CATALOG_FORMAT, PUBLIC_CATALOG_LIMITS, publicCatalogSourceSchema,
   publicSkillManifestSchema, assertPublicCatalogEntries, type PublicCatalogIndex, type PublicCatalogSource,
-  currentPublicCatalogIndexSchema, isPublicCatalogSourceCompatible,
-} from '../app/lib/marketplace/public-catalog-contract';
-import { collectGitHub } from './github';
-import { collectMcp } from './mcp';
-import { assembleDeployment, readOptionalJson, storeContent } from './artifacts';
-import { restorePublishedCatalog } from './restore';
-import { createCatalogRunContext, type CatalogRunContext } from './run-context';
-import { createRepositoryStatisticsCollector, type RepositoryStatisticsCollector } from './statistics';
+  currentPublicCatalogIndexSchema, isPublicCatalogSourceCompatible, isPublicCatalogSourceReady,
+} from './core/marketplace/public-catalog-contract.ts';
+import { isCurrentMcpCollection } from './core/marketplace/mcp-collection-policy.ts';
+import { collectGitHub } from './github.ts';
+import { collectMcp } from './mcp.ts';
+import { assembleDeployment, readOptionalJson, storeContent } from './artifacts.ts';
+import { restorePublishedCatalog } from './restore.ts';
+import { createCatalogRunContext, type CatalogRunContext } from './run-context.ts';
+import { createRepositoryStatisticsCollector, type RepositoryStatisticsCollector } from './statistics.ts';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -35,7 +37,9 @@ async function collectSource(
   const snapshot = skill?.snapshot ?? mcp!.snapshot;
   let descriptor: PublicCatalogSource = {
     sourceId: source.id, kind: source.kind, schemaVersion: snapshot.schemaVersion!, sourceRef: snapshot.sourceRef,
-    lastSuccessAt: snapshot.fetchedAt, attemptedAt, coverage: 'complete',
+    // Skills 保持完整发现；MCP 如实传递窗口覆盖，不能统一标成全量。
+    lastSuccessAt: snapshot.fetchedAt, attemptedAt, coverage: mcp?.coverage ?? 'complete',
+    ...(mcp ? { collection: mcp.collection } : {}),
     remoteCount: mcp?.remoteCount ?? skill!.remoteCount, validCount: snapshot.entries.length,
     excluded: mcp?.excluded ?? skill!.excluded, shards: [], manifests: {},
   };
@@ -111,10 +115,11 @@ async function collectSources(
     await writeFile(path.join(checkpoint, `${source.id}.json`), JSON.stringify(validated));
     sources.push(validated);
   }
-  if (!previous && sources.some((source) => source.coverage !== 'complete')) {
-    throw new Error('首次完整快照尚未就绪，不切换公共市场');
+  // 首次仍要求所有来源本次成功，MCP 只接受已校验的批准窗口而非失败候选。
+  if (!previous && sources.some((source) => !isPublicCatalogSourceReady(source))) {
+    throw new Error('首次市场快照尚未完成批准的来源范围，不切换公共市场');
   }
-  if (!sources.some((source) => source.coverage === 'complete')) {
+  if (!sources.some(isPublicCatalogSourceReady)) {
     throw new Error('本批全部来源失败，保留生产版本且停止发布');
   }
   context.check();
@@ -132,16 +137,26 @@ export async function collectCatalog(context: CatalogRunContext): Promise<Catalo
   if (process.env.CATALOG_FORCE && !['true', 'false'].includes(process.env.CATALOG_FORCE)) {
     throw new Error('CATALOG_FORCE 只能为 true 或 false');
   }
+  // 首次初始化必须显式授权，空值或拼写错误不能静默放宽生产恢复。
+  const initialSetting = process.env.CATALOG_INITIAL_BUILD;
+  if (initialSetting !== undefined && !['true', 'false'].includes(initialSetting)) {
+    throw new Error('CATALOG_INITIAL_BUILD 只能为 true 或 false');
+  }
+  const initialBuild = initialSetting === 'true';
   const forced = process.env.CATALOG_FORCE === 'true';
   const startedAt = new Date(context.startedAt).toISOString();
   const batchKey = new Date(context.startedAt + 8 * 3600_000).toISOString().slice(0, 10);
   const releaseId = `${batchKey}-${context.startedAt.toString(36)}`;
   const localPrevious = await readOptionalJson(path.join(output, 'catalog-index.json'));
-  const previous = await context.measure('恢复生产静态版本', () => restorePublishedCatalog(output, publicUrl, context));
+  const previous = await context.measure('恢复生产静态版本', () =>
+    restorePublishedCatalog(output, publicUrl, context, { initialBuild }));
   if (!previous && localPrevious) throw new Error('生产索引缺失但本地存在成功记录，禁止作为首次发布继续采集');
   await mkdir(output, { recursive: true });
   // 只把已发布生产索引视为成功依据，未发布候选不能抢占本日幂等状态。
-  const reusable = !forced && previous?.batchKey === batchKey && currentPublicCatalogIndexSchema.safeParse(previous).success;
+  // 旧采集策略不能抢占同日批次；无成功内容的来源仍沿用既有日批次语义。
+  const reusable = !forced && previous?.batchKey === batchKey && currentPublicCatalogIndexSchema.safeParse(previous).success &&
+    previous.sources.every((source) => source.kind === 'skill' || !source.lastSuccessAt ||
+      (source.collection !== undefined && isCurrentMcpCollection(source.sourceId, source.collection)));
   let index: PublicCatalogIndex;
   if (reusable) {
     index = currentPublicCatalogIndexSchema.parse(previous);

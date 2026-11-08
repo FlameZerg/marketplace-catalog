@@ -1,6 +1,7 @@
-import type { MarketplaceEntry } from '../app/lib/marketplace/types';
-import { fetchJson, type CatalogNetworkContext } from './network';
-import { CATALOG_RUN_LIMITS, type CatalogRunContext } from './run-context';
+// 离线入口只引用仓库内核心，独立 Pages 构建不依赖主站目录。
+import type { MarketplaceEntry } from './core/marketplace/types.ts';
+import { fetchJson, type CatalogNetworkContext } from './network.ts';
+import { CATALOG_RUN_LIMITS, type CatalogRunContext } from './run-context.ts';
 
 export type RepositoryStatisticsCollector = <T extends MarketplaceEntry>(entry: T) => Promise<T>;
 
